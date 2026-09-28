@@ -16,7 +16,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['endurance-mark.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
       manifest: {
-        id: '/',
+        id: base,
         name: 'Endurance One | Ironman Training',
         short_name: 'Endurance One',
         description: 'Your personal training companion on the road to Ironman race day.',
