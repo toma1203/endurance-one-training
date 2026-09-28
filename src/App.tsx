@@ -7,6 +7,11 @@ import {
   addDays, calendarDaysBetween, dateFromISO, getPlanWorkouts, getTrainingDay, PLAN_START, TOTAL_PLAN_WEEKS,
   RACE_DAY, toISODate, trainingPhase, weekNumber, type Workout, type WorkoutType,
 } from './data/trainingPlan'
+import {
+  createStravaSession, disconnectStrava, getStravaConnectionUrl, isStravaConfigured,
+  stravaSessionStorageKey, syncStrava,
+} from './data/stravaClient'
+import { StravaPanel, type StravaUiStatus } from './components/StravaPanel'
 
 type CompletionMap = Record<string, boolean>
 type AdviceKey = 'swim' | 'bike' | 'run' | 'strength'
@@ -61,6 +66,11 @@ function App() {
   })
   const [theme, setTheme] = useState<'light' | 'dark'>(() => localStorage.getItem(themeStorageKey) === 'dark' ? 'dark' : 'light')
   const [today] = useState(() => toISODate(new Date()))
+  const [stravaSessionToken, setStravaSessionToken] = useState(() => localStorage.getItem(stravaSessionStorageKey) ?? '')
+  const [stravaStatus, setStravaStatus] = useState<StravaUiStatus>(() => !isStravaConfigured ? 'not-configured' : localStorage.getItem(stravaSessionStorageKey) ? 'syncing' : 'disconnected')
+  const [stravaAthleteName, setStravaAthleteName] = useState('')
+  const [stravaLastSync, setStravaLastSync] = useState('')
+  const [stravaMessage, setStravaMessage] = useState(() => stravaCallbackMessage(new URLSearchParams(window.location.search).get('strava')))
   const [adviceType, setAdviceType] = useState<AdviceKey>('bike')
   const [adviceShown, setAdviceShown] = useState(false)
 
@@ -72,6 +82,44 @@ function App() {
     document.documentElement.dataset.theme = theme
     localStorage.setItem(themeStorageKey, theme)
   }, [theme])
+
+  useEffect(() => {
+    const result = new URLSearchParams(window.location.search).get('strava')
+    if (!result) return
+    const currentUrl = new URL(window.location.href)
+    currentUrl.searchParams.delete('strava')
+    window.history.replaceState({}, '', `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`)
+  }, [])
+
+  useEffect(() => {
+    if (!isStravaConfigured || !stravaSessionToken) return
+
+    let active = true
+    syncStrava(stravaSessionToken).then((result) => {
+      if (!active) return
+      if (!result.connected) {
+        setStravaStatus('disconnected')
+        setStravaAthleteName('')
+        return
+      }
+      setStravaAthleteName(result.athleteName)
+      setCompletions((current) => mergeCompletions(current, result.completedWorkoutIds))
+      setStravaLastSync(new Date().toISOString())
+      setStravaMessage(`Checked ${result.activityCount} Strava activities.`)
+      setStravaStatus('connected')
+    }).catch((error: unknown) => {
+      if (!active) return
+      if (error instanceof Error && error.message === 'unauthorized') {
+        localStorage.removeItem(stravaSessionStorageKey)
+        setStravaSessionToken('')
+        setStravaMessage('Your Strava sync session expired. Connect again to continue.')
+      } else {
+        setStravaMessage(stravaErrorMessage(error))
+      }
+      setStravaStatus('error')
+    })
+    return () => { active = false }
+  }, [stravaSessionToken])
 
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => {
     const date = addDays(weekStart, index)
@@ -110,6 +158,57 @@ function App() {
 
   function toggleWorkout(id: string) {
     setCompletions((current) => ({ ...current, [id]: !current[id] }))
+  }
+
+  async function connectStrava(password: string) {
+    try {
+      const token = await createStravaSession(password)
+      const authorizationUrl = await getStravaConnectionUrl(token)
+      localStorage.setItem(stravaSessionStorageKey, token)
+      window.location.assign(authorizationUrl)
+    } catch (error) {
+      setStravaStatus('error')
+      setStravaMessage(stravaErrorMessage(error))
+    }
+  }
+
+  async function syncStravaNow() {
+    if (!stravaSessionToken) return
+    setStravaStatus('syncing')
+    setStravaMessage('')
+    try {
+      const result = await syncStrava(stravaSessionToken)
+      if (!result.connected) {
+        setStravaStatus('disconnected')
+        setStravaAthleteName('')
+        return
+      }
+      setStravaAthleteName(result.athleteName)
+      setCompletions((current) => mergeCompletions(current, result.completedWorkoutIds))
+      setStravaLastSync(new Date().toISOString())
+      setStravaMessage(`Checked ${result.activityCount} Strava activities.`)
+      setStravaStatus('connected')
+    } catch (error) {
+      setStravaMessage(stravaErrorMessage(error))
+      setStravaStatus('error')
+    }
+  }
+
+  async function disconnectStravaAccount() {
+    if (!stravaSessionToken) return
+    setStravaStatus('syncing')
+    try {
+      await disconnectStrava(stravaSessionToken)
+      localStorage.removeItem(stravaSessionStorageKey)
+      setStravaSessionToken('')
+      setStravaAthleteName('')
+      setStravaLastSync('')
+      setStravaMessage('Strava has been disconnected.')
+      setStravaStatus('disconnected')
+    } catch (error) {
+      setStravaMessage(stravaErrorMessage(error))
+      setStravaStatus('error')
+    }
   }
 
   function selectWorkout(workout: Workout) {
@@ -218,6 +317,7 @@ function App() {
         </div>
 
         <aside className="sidebar">
+          <StravaPanel configured={isStravaConfigured} status={stravaStatus} athleteName={stravaAthleteName} lastSync={stravaLastSync} message={stravaMessage} onConnect={connectStrava} onSync={syncStravaNow} onDisconnect={disconnectStravaAccount} />
           <section className="block-card">
             <div className="block-card-heading"><span className="section-kicker">YOUR TRAINING BLOCK</span><span className="phase-chip">{phase}</span></div>
             <div className="block-progress-wrap">
@@ -249,6 +349,36 @@ function App() {
 
 function CalendarDaysIcon() {
   return <Activity size={14} />
+}
+
+function mergeCompletions(current: CompletionMap, workoutIds: string[]): CompletionMap {
+  const next = { ...current }
+  let changed = false
+  for (const id of workoutIds) {
+    if (!next[id]) {
+      next[id] = true
+      changed = true
+    }
+  }
+  return changed ? next : current
+}
+
+function stravaErrorMessage(error: unknown) {
+  const code = error instanceof Error ? error.message : ''
+  if (code === 'invalid_password') return 'That app access password was not accepted.'
+  if (code === 'worker_not_configured') return 'The secure Strava service needs its credentials configured.'
+  if (code === 'strava_rate_limit') return 'Strava is receiving too many requests. Try again in a little while.'
+  if (code === 'strava_not_connected') return 'Connect your Strava account to sync activities.'
+  if (code === 'strava_api_error') return 'Strava could not return activities. Check its connection and try again.'
+  return 'Strava sync could not finish. Check the service setup and try again.'
+}
+
+function stravaCallbackMessage(result: string | null) {
+  if (result === 'connected') return 'Strava is linked. Checking your training plan now.'
+  if (result === 'denied') return 'Strava access was not granted.'
+  if (result === 'scope-missing') return 'Allow activity read access in Strava to enable automatic completion.'
+  if (result) return 'Strava could not complete the connection. Please try again.'
+  return ''
 }
 
 function WorkoutDetail({ workout, completed, onToggle }: { workout: Workout; completed: boolean; onToggle: () => void }) {

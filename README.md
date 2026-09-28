@@ -26,6 +26,29 @@ Durations and distances are starter targets, not individualized coaching. Adjust
 
 The app uses React, TypeScript, Vite, Tailwind CSS, and Lucide React.
 
+## Strava activity sync
+
+Strava sync is read-only. Once configured, opening the app or tapping **Sync now** checks activities from the plan start through today. A swim, ride, run, or strength activity is matched by its Strava sport type and local activity date; matching sessions are marked complete, while manual completions are left untouched. Rest and race-day items are never auto-completed. Only activity IDs, sport types, names, local dates, durations, and distances are read for matching; route/ GPS data is not requested or stored. Strava activities hidden with **Only You** require the requested `activity:read_all` permission.
+
+The Strava client secret and refresh token must stay server-side. The integration uses a Cloudflare Worker with private SQLite Durable Object storage and a separate app-access password. It is designed for one athlete, so do not share that password.
+
+### One-time Strava setup
+
+1. Create a Strava API application at `https://www.strava.com/settings/api`. Deploy the Worker once with `npm run worker:deploy`; the command prints its `workers.dev` URL. In the Strava API application, set **Authorization Callback Domain** to the Worker hostname without `https://` or a path.
+2. Add the Worker secrets from a terminal, entering each value only at the secure terminal prompt:
+
+	```sh
+	npx wrangler secret put STRAVA_CLIENT_ID --config worker/wrangler.jsonc
+	npx wrangler secret put STRAVA_CLIENT_SECRET --config worker/wrangler.jsonc
+	npx wrangler secret put APP_PASSWORD --config worker/wrangler.jsonc
+	```
+
+	Use a long, unique app password. Do not commit it, put it in GitHub Pages variables, or send it in chat. Worker secrets are ignored by Git.
+3. In the GitHub repository settings, add the repository **Actions variable** `VITE_STRAVA_API_URL` with the Worker URL, for example `https://endurance-one-strava.<your-account>.workers.dev`.
+4. Push any commit to `main` (or run the workflow manually) to rebuild GitHub Pages with that Worker URL. Open the app, choose **Connect Strava**, enter the app password, and authorize read-only activity access on Strava.
+
+The Worker callback is `/oauth/callback`; the frontend return address is set in `worker/wrangler.jsonc`. The Worker can be deployed without Strava credentials, but the connection buttons remain unavailable until its secrets and GitHub Actions variable are configured.
+
 ## Install on a phone
 
 The production build is a Progressive Web App (PWA). Deploy the contents of `dist` to a static host that serves HTTPS, then open its public HTTPS address on the phone:

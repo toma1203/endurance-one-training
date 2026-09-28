@@ -209,6 +209,34 @@ button { color: inherit; }
 .key-item { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-soft); font-size: 9px; }
 .key-item i { width: 7px; height: 7px; display: block; border-radius: 2px; }
 .key-swim i { background: var(--blue); }.key-bike i { background: var(--green); }.key-run i { background: var(--orange); }.key-strength i { background: var(--purple); }.key-rest i { background: var(--ink-faint); }
+.strava-card { padding: 15px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
+.strava-card-heading { display: flex; align-items: center; gap: 8px; }
+.strava-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 7px; background: #fff0e4; color: #e46d2e; }
+:root[data-theme='dark'] .strava-icon { background: #4a382e; color: #f39a62; }
+.strava-status-pill { margin-left: auto; padding: 4px 7px; border-radius: 5px; background: var(--surface-tint); color: var(--ink-soft); font-size: 8px; font-weight: 700; }
+.strava-status-connected { background: var(--green-soft); color: var(--green); }
+.strava-status-syncing { background: var(--blue-soft); color: var(--blue); }
+.strava-status-error { background: var(--orange-soft); color: var(--orange); }
+.strava-description { margin: 11px 0 10px; color: var(--ink-soft); font-size: 10px; line-height: 1.45; }
+.strava-connected-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+.strava-athlete { display: inline-flex; align-items: center; gap: 5px; color: var(--green); font-size: 10px; font-weight: 700; }
+.strava-sync-time { color: var(--ink-faint); font-size: 8px; white-space: nowrap; }
+.strava-message { margin: 0 0 9px; color: var(--ink-soft); font-size: 9px; line-height: 1.45; }
+.strava-message-error { color: var(--accent-dark); }
+.strava-actions { display: flex; align-items: center; gap: 7px; }
+.strava-primary-button { min-height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; border: 0; border-radius: 6px; background: #e46d2e; color: #fff; font-size: 10px; font-weight: 700; cursor: pointer; }
+.strava-primary-button:hover:not(:disabled) { background: #c95822; }
+.strava-primary-button:disabled, .strava-disconnect-button:disabled { opacity: .55; cursor: not-allowed; }
+.strava-disconnect-button { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+.strava-disconnect-button:hover { color: var(--accent); border-color: var(--accent); }
+.strava-cancel-button { min-height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-soft); font-size: 9px; cursor: pointer; }
+.strava-password-form { display: grid; gap: 7px; margin-top: 12px; }
+.strava-password-form label { color: var(--ink-soft); font-size: 9px; font-weight: 700; }
+.strava-password-form input { width: 100%; height: 34px; padding: 0 9px; border: 1px solid var(--line-strong); border-radius: 6px; outline-color: #e46d2e; background: var(--surface); color: var(--ink); font-size: 11px; }
+.strava-password-form p { margin: 0; color: var(--ink-faint); font-size: 8px; line-height: 1.4; }
+.strava-privacy-note { margin: 10px 0 0; color: var(--ink-faint); font-size: 8px; line-height: 1.4; }
+.strava-spinning { animation: strava-spin 1.2s linear infinite; }
+@keyframes strava-spin { to { transform: rotate(360deg); } }
 .page-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 24px; padding-top: 13px; border-top: 1px solid var(--line); color: var(--ink-faint); font-size: 8px; letter-spacing: .55px; }
 .page-footer i { padding: 0 4px; color: var(--accent); font-style: normal; }
 
