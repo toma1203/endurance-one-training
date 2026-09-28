@@ -12,11 +12,16 @@ import {
   stravaSessionStorageKey, syncStrava,
 } from './data/stravaClient'
 import { StravaPanel, type StravaUiStatus } from './components/StravaPanel'
+import { GarminImportPanel } from './components/GarminImportPanel'
+import { parseGarminFiles, type GarminActivity } from './data/garminImport'
+import { getCompletedWorkoutIds } from './data/stravaMatching'
 
 type CompletionMap = Record<string, boolean>
 type AdviceKey = 'swim' | 'bike' | 'run' | 'strength'
+type GarminImportSummary = { imported: number; newlyMatched: number; skipped: number }
 
 const completionStorageKey = 'endurance-one-completions-v1'
+const garminStorageKey = 'endurance-one-garmin-activities-v1'
 const themeStorageKey = 'endurance-one-theme'
 const allWorkouts = getPlanWorkouts().flatMap((day) => day.workouts)
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -71,12 +76,20 @@ function App() {
   const [stravaAthleteName, setStravaAthleteName] = useState('')
   const [stravaLastSync, setStravaLastSync] = useState('')
   const [stravaMessage, setStravaMessage] = useState(() => stravaCallbackMessage(new URLSearchParams(window.location.search).get('strava')))
+  const [garminActivities, setGarminActivities] = useState<GarminActivity[]>(readStoredGarminActivities)
+  const [garminImporting, setGarminImporting] = useState(false)
+  const [garminImportMessage, setGarminImportMessage] = useState('')
+  const [garminImportSummary, setGarminImportSummary] = useState<GarminImportSummary | null>(null)
   const [adviceType, setAdviceType] = useState<AdviceKey>('bike')
   const [adviceShown, setAdviceShown] = useState(false)
 
   useEffect(() => {
     localStorage.setItem(completionStorageKey, JSON.stringify(completions))
   }, [completions])
+
+  useEffect(() => {
+    localStorage.setItem(garminStorageKey, JSON.stringify(garminActivities))
+  }, [garminActivities])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -158,6 +171,31 @@ function App() {
 
   function toggleWorkout(id: string) {
     setCompletions((current) => ({ ...current, [id]: !current[id] }))
+  }
+
+  async function importGarminFiles(files: File[]) {
+    setGarminImporting(true)
+    setGarminImportMessage('')
+    try {
+      const parsed = await parseGarminFiles(files)
+      const knownIds = new Set(garminActivities.map((activity) => activity.id))
+      const newActivities = parsed.activities.filter((activity) => !knownIds.has(activity.id))
+      const mergedActivities = [...garminActivities, ...newActivities].slice(-1000)
+      setGarminActivities(mergedActivities)
+      const matchingIds = getCompletedWorkoutIds(allWorkouts, mergedActivities)
+      const newlyMatched = matchingIds.filter((id) => !completions[id]).length
+      setCompletions((current) => mergeCompletions(current, matchingIds))
+      setGarminImportSummary({ imported: newActivities.length, newlyMatched, skipped: parsed.skippedFiles.length })
+      if (newActivities.length === 0 && parsed.skippedFiles.length === 0) {
+        setGarminImportMessage('These activities were already imported.')
+      } else if (newActivities.length === 0 && parsed.activities.length === 0) {
+        setGarminImportMessage('No readable activities were found in the selected files.')
+      }
+    } catch (error) {
+      setGarminImportMessage(error instanceof Error ? error.message : 'Could not read these Garmin exports.')
+    } finally {
+      setGarminImporting(false)
+    }
   }
 
   async function connectStrava(password: string) {
@@ -317,7 +355,8 @@ function App() {
         </div>
 
         <aside className="sidebar">
-          <StravaPanel configured={isStravaConfigured} status={stravaStatus} athleteName={stravaAthleteName} lastSync={stravaLastSync} message={stravaMessage} onConnect={connectStrava} onSync={syncStravaNow} onDisconnect={disconnectStravaAccount} />
+          <GarminImportPanel activities={garminActivities} busy={garminImporting} message={garminImportMessage} summary={garminImportSummary} onImport={importGarminFiles} />
+          {isStravaConfigured && <StravaPanel configured={isStravaConfigured} status={stravaStatus} athleteName={stravaAthleteName} lastSync={stravaLastSync} message={stravaMessage} onConnect={connectStrava} onSync={syncStravaNow} onDisconnect={disconnectStravaAccount} />}
           <section className="block-card">
             <div className="block-card-heading"><span className="section-kicker">YOUR TRAINING BLOCK</span><span className="phase-chip">{phase}</span></div>
             <div className="block-progress-wrap">
@@ -349,6 +388,21 @@ function App() {
 
 function CalendarDaysIcon() {
   return <Activity size={14} />
+}
+
+function readStoredGarminActivities(): GarminActivity[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(garminStorageKey) ?? '[]') as unknown
+    if (!Array.isArray(stored)) return []
+    return stored.filter((activity): activity is GarminActivity => {
+      return typeof activity === 'object' && activity !== null
+        && typeof activity.id === 'string'
+        && typeof activity.start_date_local === 'string'
+        && typeof activity.sport_type === 'string'
+    }).slice(-1000)
+  } catch {
+    return []
+  }
 }
 
 function mergeCompletions(current: CompletionMap, workoutIds: string[]): CompletionMap {

@@ -209,6 +209,34 @@ button { color: inherit; }
 .key-item { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-soft); font-size: 9px; }
 .key-item i { width: 7px; height: 7px; display: block; border-radius: 2px; }
 .key-swim i { background: var(--blue); }.key-bike i { background: var(--green); }.key-run i { background: var(--orange); }.key-strength i { background: var(--purple); }.key-rest i { background: var(--ink-faint); }
+.garmin-card { padding: 15px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
+.garmin-card-heading { display: flex; align-items: center; gap: 9px; }
+.garmin-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 7px; color: #1683a3; background: #e9f4f6; }
+:root[data-theme='dark'] .garmin-icon { color: #84c4d8; background: #2d4148; }
+.garmin-title h3 { margin: 2px 0 0; color: var(--ink); font: 700 13px/1.3 'Manrope', sans-serif; }
+.garmin-count { margin-left: auto; color: var(--ink-faint); font-size: 9px; white-space: nowrap; }
+.garmin-description { margin: 11px 0; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+.garmin-file-input { display: none; }
+.garmin-import-button { width: 100%; min-height: 35px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 9px; border: 1px solid #b8d8df; border-radius: 6px; background: #f0f8f9; color: #226f83; font-size: 10px; font-weight: 700; cursor: pointer; }
+.garmin-import-button:hover:not(:disabled) { background: #e3f2f4; border-color: #7db9c6; }
+.garmin-import-button:disabled { opacity: .58; cursor: progress; }
+:root[data-theme='dark'] .garmin-import-button { border-color: #416771; background: #30464c; color: #a4d7e3; }
+:root[data-theme='dark'] .garmin-import-button:hover:not(:disabled) { background: #39545b; }
+.garmin-archive-icon { margin-left: auto; color: #6398a5; }
+.garmin-loader { animation: strava-spin 1s linear infinite; }
+.garmin-result { display: flex; align-items: start; gap: 7px; margin-top: 9px; padding: 8px; border-radius: 5px; background: var(--green-soft); color: var(--green); font-size: 9px; line-height: 1.45; }
+.garmin-result svg { flex: 0 0 auto; }
+.garmin-error { margin: 9px 0 0; color: var(--accent-dark); font-size: 9px; line-height: 1.45; }
+.garmin-recent-list { display: grid; gap: 8px; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line); }
+.garmin-recent-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.garmin-recent-item > span:first-child { display: grid; min-width: 0; gap: 2px; }
+.garmin-recent-item strong { overflow: hidden; color: var(--ink); font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.garmin-recent-item small { color: var(--ink-faint); font-size: 8px; }
+.garmin-recent-metrics { color: var(--ink-soft); font-size: 8px; white-space: nowrap; }
+.garmin-help { display: grid; gap: 4px; margin-top: 12px; padding: 9px; border-radius: 5px; background: var(--surface-soft); color: var(--ink-soft); font-size: 9px; line-height: 1.45; }
+.garmin-help strong { color: var(--ink); font-size: 9px; }
+.garmin-help b { color: var(--ink); }
+.garmin-privacy-note { margin: 9px 0 0; color: var(--ink-faint); font-size: 8px; line-height: 1.4; }
 .strava-card { padding: 15px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); }
 .strava-card-heading { display: flex; align-items: center; gap: 8px; }
 .strava-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 7px; background: #fff0e4; color: #e46d2e; }

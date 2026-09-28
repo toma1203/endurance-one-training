@@ -20,15 +20,26 @@ Durations and distances are starter targets, not individualized coaching. Adjust
 ## App behavior
 
 - Workout completion and light/dark theme are saved in browser local storage.
+- Garmin FIT, TCX, GPX, and bulk-export ZIP files can be imported without a Strava subscription. Files are parsed locally in the browser; matching activities mark the corresponding plan sessions complete.
+- Imported Garmin activity summaries are stored only in that browser for duplicate detection. The raw activity files and route coordinates are not uploaded or persisted.
 - Every session includes a type-specific substitution or recovery option.
 - The missed-workout guide prioritizes long rides and runs, retains two weekly swims where possible, and drops strength or extra easy work first. It does not recommend cramming missed sessions.
 - The week controls move through the complete plan; the race week includes short tune-ups and the race-day session.
 
 The app uses React, TypeScript, Vite, Tailwind CSS, and Lucide React.
 
+## Garmin Connect import without Strava
+
+1. Sign in to [Garmin Connect](https://connect.garmin.com/modern/activities) in a browser and open an activity.
+2. Open the activity menu and choose **Export Original**. Garmin downloads an FIT or TCX activity file. Repeat for activities you want to import, or select several exported files at once.
+3. For a larger history, request **Export Your Data** from Garmin Connect account settings and download the archive when Garmin prepares it. Select that ZIP in Endurance One; the app extracts supported FIT, TCX, and GPX activity files locally.
+4. In Endurance One choose **Choose Garmin export files**. Matching is based on sport and the activity's local date. The upload marks matching plan sessions complete and ignores duplicate files.
+
+The browser importer accepts up to 100 selected files at a time (100 MB total); individual activity files can be 50 MB, and a ZIP can be 100 MB compressed, contain up to 300 supported activities, and expand to 150 MB. Imported summaries stay in that browser's local storage. For another phone/browser, import the files there too. This route is manual: Garmin does not push new activities directly into this PWA.
+
 ## Strava activity sync
 
-Strava sync is read-only. Once configured, opening the app or tapping **Sync now** checks activities from the plan start through today. A swim, ride, run, or strength activity is matched by its Strava sport type and local activity date; matching sessions are marked complete, while manual completions are left untouched. Rest and race-day items are never auto-completed. Only activity IDs, sport types, names, local dates, durations, and distances are read for matching; route/ GPS data is not requested or stored. Strava activities hidden with **Only You** require the requested `activity:read_all` permission.
+Strava sync is optional. Current Strava developer documentation says a Strava subscription is required to create an API application. Without that subscription, use the Garmin file-import flow above. For an eligible API app, sync is read-only: opening the app or tapping **Sync now** checks activities from the plan start through today. A swim, ride, run, or strength activity is matched by sport and local date; rest and race-day items are never auto-completed. Strava activities hidden with **Only You** require the `activity:read_all` permission.
 
 The Strava client secret and refresh token must stay server-side. The integration uses a Cloudflare Worker with private SQLite Durable Object storage and a separate app-access password. It is designed for one athlete, so do not share that password.
 

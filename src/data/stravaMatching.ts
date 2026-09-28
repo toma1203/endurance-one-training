@@ -1,7 +1,7 @@
 import type { Workout, WorkoutType } from './trainingPlan'
 
 export type StravaActivity = {
-  id: number
+  id: number | string
   name: string
   type: string
   sport_type: string
@@ -11,16 +11,17 @@ export type StravaActivity = {
 }
 
 const activityTypes: Record<Exclude<WorkoutType, 'rest' | 'race'>, string[]> = {
-  swim: ['swim'],
-  bike: ['ride', 'virtualride', 'ebikeride', 'mountainbikeride', 'gravelride', 'emountainbikeride', 'velomobile', 'handcycle'],
-  run: ['run', 'trailrun', 'virtualrun'],
-  strength: ['weighttraining', 'crossfit', 'workout', 'highintensityintervaltraining'],
+  swim: ['swim', 'swimming', 'lap_swimming', 'open_water'],
+  bike: ['ride', 'cycling', 'bicycle', 'virtualride', 'ebikeride', 'mountainbikeride', 'gravelride', 'emountainbikeride', 'velomobile', 'handcycle', 'indoor_cycling'],
+  run: ['run', 'running', 'trailrun', 'trail_running', 'virtualrun', 'treadmill'],
+  strength: ['weighttraining', 'strength_training', 'crossfit', 'workout', 'fitness_equipment', 'highintensityintervaltraining'],
 }
 
 function workoutForActivity(activity: StravaActivity): Exclude<WorkoutType, 'rest' | 'race'> | null {
   const activityNames = [activity.sport_type, activity.type].map((type) => type.toLowerCase().replace(/[^a-z]/g, ''))
   for (const [workoutType, acceptedTypes] of Object.entries(activityTypes) as [Exclude<WorkoutType, 'rest' | 'race'>, string[]][]) {
-    if (activityNames.some((name) => acceptedTypes.includes(name))) return workoutType
+    const normalizedAcceptedTypes = acceptedTypes.map((type) => type.toLowerCase().replace(/[^a-z]/g, ''))
+    if (activityNames.some((name) => normalizedAcceptedTypes.includes(name))) return workoutType
   }
   return null
 }

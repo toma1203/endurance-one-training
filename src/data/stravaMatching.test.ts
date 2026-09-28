@@ -29,6 +29,21 @@ describe('getCompletedWorkoutIds', () => {
     expect(getCompletedWorkoutIds(workouts, activities)).toEqual(expect.arrayContaining(workouts.map((workout) => workout.id)))
   })
 
+  it('matches Garmin FIT sport names', () => {
+    const workouts = [
+      ...getTrainingDay('2026-09-29').workouts,
+      ...getTrainingDay('2026-09-30').workouts,
+    ]
+    const activities = [
+      activity('2026-09-29', 'running', 10),
+      activity('2026-09-29', 'swimming', 11),
+      activity('2026-09-30', 'cycling', 12),
+      activity('2026-09-30', 'fitness_equipment', 13),
+    ]
+
+    expect(getCompletedWorkoutIds(workouts, activities)).toHaveLength(4)
+  })
+
   it('does not match an activity from the neighboring local date', () => {
     const workouts = getTrainingDay('2026-09-29').workouts
 
