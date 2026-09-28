@@ -30,12 +30,12 @@ The app uses React, TypeScript, Vite, Tailwind CSS, and Lucide React.
 
 ## Garmin Connect import without Strava
 
-1. Sign in to [Garmin Connect](https://connect.garmin.com/modern/activities) in a browser and open an activity.
-2. Open the activity menu and choose **Export Original**. Garmin downloads an FIT or TCX activity file. Repeat for activities you want to import, or select several exported files at once.
-3. For a larger history, request **Export Your Data** from Garmin Connect account settings and download the archive when Garmin prepares it. Select that ZIP in Endurance One; the app extracts supported FIT, TCX, and GPX activity files locally.
+1. Sign in to [Garmin Connect](https://connect.garmin.com/modern/activities) in a browser. You can export one activity at a time, or use the activity-list CSV export for a compact activity summary.
+2. Open the activity menu and choose **Export Original**. Garmin downloads an FIT or TCX activity file. Repeat for activities you want to import, or select several exported files at once. If you already have the Garmin activity-list CSV, you can skip this step and import that CSV directly.
+3. To export the activity list as CSV, open the Activities list on Garmin Connect in a desktop browser and use its **Export to CSV** option if available. Select the downloaded CSV in Endurance One. CSV files include summary fields and no route data. For a larger history, request **Export Your Data** from Garmin Connect account settings and download the archive when Garmin prepares it. Select that ZIP in Endurance One; the app extracts supported FIT, TCX, GPX, and CSV files locally.
 4. In Endurance One choose **Choose Garmin export files**. Matching is based on sport and the activity's local date. The upload marks matching plan sessions complete and ignores duplicate files.
 
-The browser importer accepts up to 100 selected files at a time (100 MB total); individual activity files can be 50 MB, and a ZIP can be 100 MB compressed, contain up to 300 supported activities, and expand to 150 MB. Imported summaries stay in that browser's local storage. For another phone/browser, import the files there too. This route is manual: Garmin does not push new activities directly into this PWA.
+The browser importer accepts up to 100 selected files at a time (100 MB total); individual activity files can be 50 MB, and a ZIP can be 100 MB compressed, contain up to 300 supported activities, and expand to 150 MB. CSV distances without an explicit unit in the column header are interpreted as kilometres. Set Garmin Connect to metric units before exporting such a CSV, or use FIT/TCX if your CSV uses miles. Imported summaries stay in that browser's local storage. For another phone/browser, import the files there too. This route is manual: Garmin does not push new activities directly into this PWA.
 
 ## Strava activity sync
 

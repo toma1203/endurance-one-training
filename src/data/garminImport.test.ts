@@ -54,6 +54,30 @@ describe('parseGarminFiles', () => {
     expect(result.activities[1].distance).toBeGreaterThan(100)
   })
 
+  it('reads Garmin activity-list CSV with comma or semicolon delimiter', async () => {
+    const csv = [
+      'Activity Type,Date,Favorite,Title,Distance,Calories,Time',
+      'Running,2026-09-29 06:30:00,false,"Tempo, morning run",6.25,400,0:35:00',
+      'Cycling,2026-09-30 07:00:00,false,Wednesday ride,42.5,700,1:30:00',
+    ].join('\r\n')
+    const result = await parseGarminFiles([new File([csv], 'Activities.csv')])
+
+    expect(result.skippedFiles).toEqual([])
+    expect(result.activities).toHaveLength(2)
+    expect(result.activities[0]).toMatchObject({
+      name: 'Tempo, morning run',
+      sport_type: 'Run',
+      start_date_local: '2026-09-29T06:30:00',
+      moving_time: 2100,
+      distance: 6250,
+    })
+    expect(result.activities[1]).toMatchObject({ sport_type: 'Ride', moving_time: 5400, distance: 42500 })
+
+    const semicolonCsv = 'Activity Type;Date;Title;Distance (mi);Elapsed Time\nRunning;2026-09-29 07:00:00;Park run;3.1;0:30:00'
+    const semicolonResult = await parseGarminFiles([new File([semicolonCsv], 'activities.csv')])
+    expect(semicolonResult.activities[0]).toMatchObject({ distance: 4989, moving_time: 1800 })
+  })
+
   it('extracts supported activity files from a bulk Garmin ZIP', async () => {
     const archive = zipSync({
       'activities/run.tcx': new TextEncoder().encode(tcx),

@@ -22,7 +22,7 @@ type XmlActivity = {
   name: string
 }
 
-const supportedExtensions = ['.fit', '.tcx', '.gpx']
+const supportedExtensions = ['.fit', '.tcx', '.gpx', '.csv']
 const maximumSelectedFiles = 100
 const maximumSelectedBytes = 100 * 1024 * 1024
 const maximumSourceFileBytes = 50 * 1024 * 1024
@@ -83,6 +83,102 @@ function xmlElements(root: Document | Element, name: string) {
 function childText(element: Element, name: string) {
   return Array.from(element.getElementsByTagName('*'))
     .find((child) => child.localName.toLowerCase() === name.toLowerCase())?.textContent?.trim() ?? ''
+}
+
+function parseCsvRows(content: string) {
+  const firstLine = content.replace(/^\uFEFF/, '').split(/\r?\n/, 1)[0] ?? ''
+  const delimiter = (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0) ? ';' : ','
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let quoted = false
+
+  for (let index = 0; index < content.length; index++) {
+    const character = content[index]
+    if (character === '"') {
+      if (quoted && content[index + 1] === '"') {
+        field += '"'
+        index++
+      } else {
+        quoted = !quoted
+      }
+    } else if (character === delimiter && !quoted) {
+      row.push(field.trim())
+      field = ''
+    } else if ((character === '\n' || character === '\r') && !quoted) {
+      if (character === '\r' && content[index + 1] === '\n') index++
+      row.push(field.trim())
+      if (row.some(Boolean)) rows.push(row)
+      row = []
+      field = ''
+    } else {
+      field += character
+    }
+  }
+  row.push(field.trim())
+  if (row.some(Boolean)) rows.push(row)
+  return rows
+}
+
+function normalizedHeader(value: string) {
+  return value.toLowerCase().replace(/\uFEFF/g, '').replace(/[^a-z0-9]/g, '')
+}
+
+function numberFromCsv(value: string) {
+  const trimmed = value.trim().replace(/[\s\u00a0]/g, '')
+  if (!trimmed) return 0
+  const normalized = trimmed.includes(',') && !trimmed.includes('.')
+    ? trimmed.replace(',', '.')
+    : trimmed.replace(/,/g, '')
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function durationFromCsv(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return 0
+  if (/^\d+(?:\.\d+)?$/.test(trimmed)) return numberFromCsv(trimmed)
+  const parts = trimmed.split(':')
+  if (parts.length < 2 || parts.length > 3 || parts.some((part) => !/^\d+(?:\.\d+)?$/.test(part))) return 0
+  const seconds = Number(parts.pop())
+  const minutes = Number(parts.pop())
+  const hours = parts.length ? Number(parts[0]) : 0
+  return hours * 3600 + minutes * 60 + seconds
+}
+
+function parseCsv(content: string): XmlActivity[] {
+  const rows = parseCsvRows(content)
+  if (rows.length < 2) return []
+  const headers = rows[0].map(normalizedHeader)
+  const column = (...names: string[]) => headers.findIndex((header) => names.includes(header))
+  const typeColumn = column('activitytype', 'sporttype', 'sport', 'type')
+  const titleColumn = column('title', 'activityname', 'name')
+  const dateColumn = column('date', 'starttime', 'startdate', 'activitydate', 'startdatelocal')
+  const distanceColumn = column('distance', 'distancem', 'distancemeters', 'distancekm', 'distancemi', 'distancemiles')
+  const durationColumn = column('time', 'elapsedtime', 'movingtime', 'duration', 'totaltime')
+  if (dateColumn < 0 || (typeColumn < 0 && titleColumn < 0)) return []
+
+  const get = (cells: string[], index: number) => index < 0 ? '' : cells[index] ?? ''
+  return rows.slice(1).flatMap((cells) => {
+    const date = toLocalDateTime(get(cells, dateColumn))
+    if (!date) return []
+    const name = get(cells, titleColumn) || get(cells, typeColumn) || 'Workout'
+    const sport = guessSport(get(cells, typeColumn) || name)
+    const rawDistance = numberFromCsv(get(cells, distanceColumn))
+    const distanceHeader = distanceColumn >= 0 ? headers[distanceColumn] : ''
+    const distance = distanceHeader.endsWith('m') || distanceHeader.includes('meter') ? rawDistance
+      : distanceHeader.includes('mile') || distanceHeader.endsWith('mi') ? rawDistance * 1609.344
+        : rawDistance * 1000
+    return [{
+      id: '',
+      name,
+      type: sport,
+      sport_type: sport,
+      start_date_local: date,
+      moving_time: durationFromCsv(get(cells, durationColumn)),
+      distance: Math.round(distance),
+    }]
+  })
 }
 
 function parseTcx(content: string): XmlActivity[] {
@@ -187,9 +283,10 @@ async function parseActivityFile(name: string, bytes: Uint8Array): Promise<XmlAc
     return parseFit(data)
   }
   const content = new TextDecoder().decode(bytes)
+  if (extension === '.csv') return parseCsv(content)
   if (extension === '.tcx') return parseTcx(content)
   if (extension === '.gpx') return parseGpx(content, name)
-  throw new Error('Choose a FIT, TCX, or GPX activity file.')
+  throw new Error('Choose a FIT, TCX, GPX, or CSV activity file.')
 }
 
 function attachSource(activities: XmlActivity[], sourceFile: string, fileHash: string) {
